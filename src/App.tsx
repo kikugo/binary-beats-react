@@ -4,6 +4,7 @@ import NoteSelector from './components/NoteSelector';
 import PlayerControls from './components/PlayerControls';
 import InstrumentSelector, { InstrumentType } from './components/InstrumentSelector';
 import TempoControl from './components/TempoControl';
+import Visualizer from './components/Visualizer';
 import { useToneAudio } from './hooks/useToneAudio';
 import './App.css';
 
@@ -103,6 +104,7 @@ function App() {
       
       <div className="main-container">
         <BinaryDisplay binary={binary} />
+        <Visualizer isPlaying={isPlaying} binary={binary} />
         <PlayerControls 
           isPlaying={isPlaying} 
           onPlayPause={handlePlayPause} 
