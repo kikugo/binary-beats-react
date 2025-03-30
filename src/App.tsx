@@ -7,6 +7,7 @@ import TempoControl from './components/TempoControl';
 import Visualizer from './components/Visualizer';
 import ThemeToggle from './components/ThemeToggle';
 import ConfigSaver from './components/ConfigSaver';
+import AudioEffectsPanel, { AudioEffectsConfig } from './components/AudioEffectsPanel';
 import { useToneAudio } from './hooks/useToneAudio';
 import { BinaryBeatsConfig } from './utils/configStorage';
 import './App.css';
@@ -17,6 +18,14 @@ const DEFAULT_NOTES = ["D4", "E4", "F4", "G4", "A5", "C5", "D5", "E5", "F5", "G5
 // Default tempo (BPM)
 const DEFAULT_TEMPO = 50;
 
+// Default audio effects
+const DEFAULT_EFFECTS: AudioEffectsConfig = {
+  reverb: 0,
+  delay: 0,
+  filter: 1,
+  volume: 0.8
+};
+
 function App() {
   // State management
   const [count, setCount] = useState(0);
@@ -26,12 +35,14 @@ function App() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [instrumentType, setInstrumentType] = useState<InstrumentType>('synth');
   const [tempo, setTempo] = useState(DEFAULT_TEMPO);
+  const [effects, setEffects] = useState<AudioEffectsConfig>(DEFAULT_EFFECTS);
   
   // Custom hook for Tone.js audio handling
   const { playNote, startAudio, stopAudio } = useToneAudio({ 
     notes, 
     instrumentType,
-    tempo
+    tempo,
+    effects
   });
 
   // Update binary representation whenever count changes
@@ -98,6 +109,11 @@ function App() {
     setNotes(newNotes);
   };
 
+  // Handle effects change
+  const handleEffectsChange = (newEffects: AudioEffectsConfig) => {
+    setEffects(newEffects);
+  };
+
   // Load a saved configuration
   const handleLoadConfig = (config: BinaryBeatsConfig) => {
     // Stop audio if playing
@@ -112,6 +128,11 @@ function App() {
     setNotes(config.notes);
     setInstrumentType(config.instrumentType);
     setTempo(config.tempo);
+    
+    // Apply effects if available
+    if (config.effects) {
+      setEffects(config.effects);
+    }
   };
 
   return (
@@ -146,10 +167,15 @@ function App() {
               notes={notes} 
               onUpdateNote={updateNote}
             />
+            <AudioEffectsPanel
+              effects={effects}
+              onChange={handleEffectsChange}
+            />
             <ConfigSaver
               notes={notes}
               instrumentType={instrumentType}
               tempo={tempo}
+              effects={effects}
               onLoadConfig={handleLoadConfig}
             />
           </div>
