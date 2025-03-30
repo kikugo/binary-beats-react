@@ -2,11 +2,16 @@ import { useState, useEffect } from 'react';
 import BinaryDisplay from './components/BinaryDisplay';
 import NoteSelector from './components/NoteSelector';
 import PlayerControls from './components/PlayerControls';
+import InstrumentSelector, { InstrumentType } from './components/InstrumentSelector';
+import TempoControl from './components/TempoControl';
 import { useToneAudio } from './hooks/useToneAudio';
 import './App.css';
 
 // Default note configuration
 const DEFAULT_NOTES = ["D4", "E4", "F4", "G4", "A5", "C5", "D5", "E5", "F5", "G5"];
+
+// Default tempo (BPM)
+const DEFAULT_TEMPO = 50;
 
 function App() {
   // State management
@@ -15,9 +20,15 @@ function App() {
   const [notes, setNotes] = useState<string[]>(DEFAULT_NOTES);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [instrumentType, setInstrumentType] = useState<InstrumentType>('synth');
+  const [tempo, setTempo] = useState(DEFAULT_TEMPO);
   
   // Custom hook for Tone.js audio handling
-  const { playNote, startAudio, stopAudio } = useToneAudio(notes);
+  const { playNote, startAudio, stopAudio } = useToneAudio({ 
+    notes, 
+    instrumentType,
+    tempo
+  });
 
   // Update binary representation whenever count changes
   useEffect(() => {
@@ -100,10 +111,20 @@ function App() {
         />
         
         {showCustomizer && (
-          <NoteSelector 
-            notes={notes} 
-            onUpdateNote={updateNote}
-          />
+          <div className="customization-panel">
+            <InstrumentSelector
+              currentInstrument={instrumentType}
+              onChange={setInstrumentType}
+            />
+            <TempoControl
+              tempo={tempo}
+              onChange={setTempo}
+            />
+            <NoteSelector 
+              notes={notes} 
+              onUpdateNote={updateNote}
+            />
+          </div>
         )}
       </div>
       
