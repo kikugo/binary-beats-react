@@ -45,15 +45,27 @@ const Visualizer: React.FC<VisualizerProps> = ({ isPlaying, binary }) => {
     const createParticles = () => {
       particles.length = 0;
       
+      // Color schemes - vibrant gradient based on position
+      const colorSchemes = [
+        (index: number) => `hsla(${index * (360 / 10)}, 100%, 70%, 1)`, // Rainbow
+        (index: number) => `hsla(${200 + index * 10}, 100%, 65%, 1)`,    // Blues
+        (index: number) => `hsla(${320 + index * 5}, 90%, 65%, 1)`,      // Purples
+        (index: number) => `hsla(${25 + index * 5}, 100%, 60%, 1)`,      // Oranges
+        (index: number) => `hsla(${120 + index * 5}, 90%, 60%, 1)`,      // Greens
+      ];
+      
+      // Select color scheme based on binary value
+      const binaryValue = parseInt(binary, 2);
+      const colorSchemeIndex = binaryValue % colorSchemes.length;
+      const getColor = colorSchemes[colorSchemeIndex];
+      
       binary.split('').forEach((bit, index) => {
-        if (bit === '1') {
-          const hue = index * (360 / 10); // Distribute colors across hue spectrum
-          
+        if (bit === '1') {          
           particles.push({
             x: canvas.width / 2,
             y: canvas.height / 2,
             size: Math.random() * 4 + 3,
-            color: `hsla(${hue}, 100%, 70%, 1)`,
+            color: getColor(index),
             speed: Math.random() * 2 + 0.5,
             opacity: 1,
             index
