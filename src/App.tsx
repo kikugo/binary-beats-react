@@ -40,7 +40,6 @@ function App() {
   // Custom hook for Tone.js audio handling
   const { playNote, startAudio, stopAudio } = useToneAudio({ 
     notes, 
-    instrumentType,
     tempo,
     effects
   });

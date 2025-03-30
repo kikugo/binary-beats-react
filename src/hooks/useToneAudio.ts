@@ -1,14 +1,17 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
 import { InstrumentType } from '../components/InstrumentSelector';
 import { AudioEffectsConfig } from '../components/AudioEffectsPanel';
+
+// For debouncing rapid note triggers
+const NOTE_DEBOUNCE_TIME = 50; // ms
 
 // Default note durations corresponding to binary positions
 const DEFAULT_NOTE_DURATIONS = [1.7, 1.5, 1.3, 1.2, 0.9, 0.7, 0.6, 0.5, 0.5, 0.4];
 
 interface UseToneAudioProps {
   notes: string[];
-  instrumentType: InstrumentType;
+  instrumentType?: InstrumentType; // Optional since we're just using basic synth
   tempo?: number;
   effects?: AudioEffectsConfig;
 }
@@ -22,195 +25,167 @@ const DEFAULT_EFFECTS: AudioEffectsConfig = {
 };
 
 /**
- * Completely rebuilt audio hook with a minimal, reliable implementation
- * for better cross-browser compatibility and performance.
+ * Extremely simplified audio hook using only a basic synth
+ * Focuses on maximum reliability and cross-browser compatibility
  */
 export const useToneAudio = ({ 
   notes, 
-  instrumentType = 'synth', 
   tempo = 50,
   effects = DEFAULT_EFFECTS 
 }: UseToneAudioProps) => {
-  // Keep track of Tone.js initialization state
-  const [isReady, setIsReady] = useState(false);
+  // Using PolySynth instead of basic Synth to handle multiple notes
+  const synthRef = useRef<Tone.PolySynth | null>(null);
   
-  // Reference to synth instance
-  const synthRef = useRef<any>(null);
-  
-  // Reference to volume node
-  const volumeRef = useRef<Tone.Volume | null>(null);
-  
-  // Initialize Tone.js on component mount
+  // Initialize audio on mount
   useEffect(() => {
-    const setupAudio = async () => {
+    const initAudio = async () => {
       try {
-        // Start the audio context and unlock it
+        // Explicitly create and start audio context
         await Tone.start();
+        console.log('Tone.js started');
         
-        // Make sure the context is running
-        if (Tone.context.state !== 'running') {
-          await Tone.context.resume();
+        // Create a polyphonic synth with simple settings
+        if (!synthRef.current) {
+          // Create a polyphonic synth that can play multiple notes at once
+          synthRef.current = new Tone.PolySynth(Tone.Synth);
+          
+          // Set volume separately
+          synthRef.current.volume.value = effects.volume * 20 - 10;
+          
+          // Configure each voice's settings
+          synthRef.current.set({
+            oscillator: {
+              type: 'triangle'
+            },
+            envelope: {
+              attack: 0.01,
+              decay: 0.1,
+              sustain: 0.3,
+              release: 0.5
+            }
+          });
+          
+          // Connect to output
+          synthRef.current.toDestination();
+          console.log('PolySynth created');
         }
-        
-        console.log('Audio ready, context state:', Tone.context.state);
-        setIsReady(true);
       } catch (error) {
-        console.error('Failed to initialize audio:', error);
+        console.error('Audio initialization failed:', error);
       }
     };
     
-    // Try to set up audio
-    setupAudio();
+    initAudio();
     
-    // Set up event handlers to unlock audio
-    const unlockAudio = async () => {
-      if (Tone.context.state !== 'running') {
+    // Add multiple ways to unlock audio context on different browsers
+    const resumeAudio = async () => {
+      if (Tone.context && Tone.context.state !== 'running') {
         try {
           await Tone.context.resume();
-          console.log('Audio context resumed by user interaction');
+          console.log('Audio context resumed');
         } catch (err) {
           console.error('Failed to resume context:', err);
         }
       }
     };
     
-    // Add event listeners for user interaction
-    document.addEventListener('click', unlockAudio);
-    document.addEventListener('keydown', unlockAudio);
-    document.addEventListener('touchstart', unlockAudio);
+    // Listen for common user interactions
+    document.addEventListener('click', resumeAudio);
+    document.addEventListener('keydown', resumeAudio);
+    document.addEventListener('touchstart', resumeAudio);
     
     // Clean up on unmount
     return () => {
-      document.removeEventListener('click', unlockAudio);
-      document.removeEventListener('keydown', unlockAudio);
-      document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('click', resumeAudio);
+      document.removeEventListener('keydown', resumeAudio);
+      document.removeEventListener('touchstart', resumeAudio);
       
-      // Clean up any synths
       if (synthRef.current) {
         synthRef.current.dispose();
-      }
-      
-      if (volumeRef.current) {
-        volumeRef.current.dispose();
+        synthRef.current = null;
       }
     };
-  }, []);
+  }, [effects.volume]);
   
-  // Create/recreate synth when instrument type or effects change
+  // Update volume when it changes
   useEffect(() => {
-    // Only proceed if audio is ready
-    if (!isReady) return;
-    
-    console.log('Creating synth with instrument:', instrumentType);
-    
-    // Dispose of previous synth if exists
     if (synthRef.current) {
-      synthRef.current.dispose();
-      synthRef.current = null;
+      synthRef.current.volume.value = effects.volume * 20 - 10;
     }
-    
-    if (volumeRef.current) {
-      volumeRef.current.dispose();
-      volumeRef.current = null;
-    }
-    
-    // Create volume node
-    const volume = new Tone.Volume(effects.volume * 20 - 10).toDestination();
-    volumeRef.current = volume;
-    
-    // Create synth based on instrument type
-    let synth;
-    switch (instrumentType) {
-      case 'metal':
-        synth = new Tone.MetalSynth({
-          frequency: 200,
-          envelope: { attack: 0.001, decay: 0.1, release: 0.1 }
-        }).connect(volume);
-        break;
-      case 'pluck':
-        synth = new Tone.PluckSynth().connect(volume);
-        break;
-      case 'membrane':
-        synth = new Tone.MembraneSynth().connect(volume);
-        break;
-      case 'fm':
-        synth = new Tone.FMSynth().connect(volume);
-        break;
-      case 'synth':
-      default:
-        synth = new Tone.Synth().connect(volume);
-        break;
-    }
-    
-    // Store synth in ref
-    synthRef.current = synth;
-    
-    // Log successful creation
-    console.log('Synth created successfully');
-    
-  }, [instrumentType, effects.volume, isReady]);
+  }, [effects.volume]);
   
-  // Play a note
+  // Track last played times for debouncing
+  const lastPlayedRef = useRef<Record<number, number>>({});
+  
+  // Improved note playing with debouncing
   const playNote = useCallback((index: number, time: number = Tone.now()) => {
-    // Safety check
-    if (!synthRef.current || !isReady || index < 0 || index >= notes.length) {
+    if (!synthRef.current || index < 0 || index >= notes.length) {
+      console.log(`Invalid note attempt at index ${index}`);
       return;
     }
     
     try {
-      // Get note and duration
+      // Implement debouncing to prevent rapid re-triggers
+      const now = Date.now();
+      const lastPlayed = lastPlayedRef.current[index] || 0;
+      
+      if (now - lastPlayed < NOTE_DEBOUNCE_TIME) {
+        // Skip if the note was played too recently
+        return;
+      }
+      
+      // Update last played time
+      lastPlayedRef.current[index] = now;
+      
       const note = notes[index];
+      if (!note) {
+        console.log(`No note data at index ${index}`);
+        return;
+      }
+      
       const duration = DEFAULT_NOTE_DURATIONS[index] || 0.5;
       
-      console.log(`Playing note ${note} at index ${index}`);
-      
-      // Play with appropriate method based on instrument type
-      if (instrumentType === 'metal') {
-        synthRef.current.triggerAttackRelease(duration, time);
-      } else if (instrumentType === 'membrane') {
-        const freq = Tone.Frequency(note).toFrequency();
-        synthRef.current.triggerAttackRelease(freq, duration, time);
+      // Ensure the note is in the format Tone.js expects
+      if (typeof note === 'string' && note.match(/^[A-G][#b]?[0-9]$/)) {
+        // Add a small random offset to time to avoid exact simultaneous triggers
+        const offset = Math.random() * 0.01;
+        synthRef.current.triggerAttackRelease(note, duration, time + offset);
+        console.log(`Playing note ${note} with duration ${duration}`);
       } else {
-        synthRef.current.triggerAttackRelease(note, duration, time);
+        console.log(`Invalid note format at index ${index}: ${note}`);
       }
     } catch (error) {
       console.error('Error playing note:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
     }
-  }, [notes, instrumentType, isReady]);
+  }, [notes]);
   
   // Start audio playback
   const startAudio = useCallback(async (callback: (time: number) => void) => {
-    if (!isReady) {
-      try {
-        // Try to resume again
-        await Tone.start();
+    try {
+      // Make sure audio context is running
+      if (Tone.context && Tone.context.state !== 'running') {
         await Tone.context.resume();
-        setIsReady(true);
-      } catch (error) {
-        console.error('Failed to start audio:', error);
-        return null;
       }
-    }
-    
-    try {      
+      
       // Set BPM
       Tone.Transport.bpm.value = tempo;
       
-      // Schedule the callback
+      // Use a simpler, more reliable time interval
       const id = Tone.Transport.scheduleRepeat((time) => {
         callback(time);
-      }, '16n');
+      }, '8n');
       
-      // Start transport
       Tone.Transport.start();
-      
-      console.log('Audio started successfully');
+      console.log('Audio playback started');
       return id;
     } catch (error) {
-      console.error('Error starting audio:', error);
+      console.error('Failed to start audio:', error);
       return null;
     }
-  }, [tempo, isReady]);
+  }, [tempo]);
   
   // Stop audio playback
   const stopAudio = useCallback(() => {
