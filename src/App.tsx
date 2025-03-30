@@ -6,7 +6,9 @@ import InstrumentSelector, { InstrumentType } from './components/InstrumentSelec
 import TempoControl from './components/TempoControl';
 import Visualizer from './components/Visualizer';
 import ThemeToggle from './components/ThemeToggle';
+import ConfigSaver from './components/ConfigSaver';
 import { useToneAudio } from './hooks/useToneAudio';
+import { BinaryBeatsConfig } from './utils/configStorage';
 import './App.css';
 
 // Default note configuration
@@ -96,6 +98,22 @@ function App() {
     setNotes(newNotes);
   };
 
+  // Load a saved configuration
+  const handleLoadConfig = (config: BinaryBeatsConfig) => {
+    // Stop audio if playing
+    if (isPlaying) {
+      stopAudio();
+      setIsPlaying(false);
+      setCount(0);
+      setBinary('0000000000');
+    }
+    
+    // Apply saved configuration
+    setNotes(config.notes);
+    setInstrumentType(config.instrumentType);
+    setTempo(config.tempo);
+  };
+
   return (
     <div className="app-container">
       <ThemeToggle />
@@ -127,6 +145,12 @@ function App() {
             <NoteSelector 
               notes={notes} 
               onUpdateNote={updateNote}
+            />
+            <ConfigSaver
+              notes={notes}
+              instrumentType={instrumentType}
+              tempo={tempo}
+              onLoadConfig={handleLoadConfig}
             />
           </div>
         )}
