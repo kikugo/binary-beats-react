@@ -3,14 +3,50 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  /* Common variables for both themes */
+  --border-radius: 8px;
+  --button-hover-transform: translateY(-2px);
+  --font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --transition-speed: 0.3s;
+}
+
+/* Dark theme (default) */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-color: #121220;
+  --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --bg-secondary: rgba(30, 30, 50, 0.7);
+  --bg-tertiary: rgba(20, 20, 35, 0.7);
+  --text-color: rgba(255, 255, 255, 0.87);
+  --text-secondary: #b3b3b3;
+  --accent-color: #646cff;
+  --accent-hover: #535bf2;
+  --button-bg: #2a2a3a;
+  --button-border: #3a3a4a;
+  --box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  --visualizer-bg: rgba(20, 20, 35, 0.5);
+}
+
+/* Light theme */
+[data-theme='light'] {
+  color-scheme: light;
+  --bg-color: #f5f5f7;
+  --bg-gradient: linear-gradient(135deg, #e6e6fa 0%, #f0f8ff 100%);
+  --bg-secondary: rgba(240, 240, 255, 0.7);
+  --bg-tertiary: rgba(230, 230, 250, 0.7);
+  --text-color: #333344;
+  --text-secondary: #555566;
+  --accent-color: #5151d3;
+  --accent-hover: #4040c0;
+  --button-bg: #e0e0e6;
+  --button-border: #d0d0d6;
+  --box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  --visualizer-bg: rgba(220, 220, 235, 0.5);
 }
 
 body {
@@ -19,7 +55,10 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--bg-gradient);
+  color: var(--text-color);
+  transition: background-color var(--transition-speed) ease,
+              color var(--transition-speed) ease;
 }
 
 #root {
@@ -35,59 +74,66 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
   padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--box-shadow);
+  transition: background-color var(--transition-speed) ease;
 }
 
 h1 {
   font-size: 2.5em;
   margin-bottom: 0.5em;
-  color: #ffffff;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  color: var(--text-color);
+  text-shadow: 0 0 10px rgba(100, 108, 255, 0.3);
+  transition: color var(--transition-speed) ease;
 }
 
 .description {
-  color: #b3b3b3;
+  color: var(--text-secondary);
   margin-bottom: 2em;
+  transition: color var(--transition-speed) ease;
 }
 
 a {
-  color: #646cff;
+  color: var(--accent-color);
   text-decoration: inherit;
+  transition: color var(--transition-speed) ease;
 }
 
 a:hover {
-  color: #535bf2;
+  color: var(--accent-hover);
 }
 
 button {
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--button-bg);
+  color: var(--text-color);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.25s, background-color var(--transition-speed) ease, transform 0.2s ease;
 }
 
 button:hover {
-  border-color: #646cff;
+  border-color: var(--accent-color);
+  transform: var(--button-hover-transform);
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 .btn-primary {
-  background-color: #646cff;
+  background-color: var(--accent-color);
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #535bf2;
+  background-color: var(--accent-hover);
 }

@@ -1,0 +1,48 @@
+.theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+}
+
+.theme-toggle-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: rgba(30, 30, 50, 0.3);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.theme-toggle-button:hover {
+  transform: scale(1.1);
+  background-color: rgba(100, 108, 255, 0.2);
+}
+
+.toggle-icons {
+  color: var(--text-color);
+  transition: transform 0.5s ease;
+}
+
+.theme-toggle-button:hover .toggle-icons {
+  transform: rotate(30deg);
+}
+
+@media (max-width: 768px) {
+  .theme-toggle {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .theme-toggle-button {
+    width: 32px;
+    height: 32px;
+  }
+}

@@ -5,6 +5,7 @@ import PlayerControls from './components/PlayerControls';
 import InstrumentSelector, { InstrumentType } from './components/InstrumentSelector';
 import TempoControl from './components/TempoControl';
 import Visualizer from './components/Visualizer';
+import ThemeToggle from './components/ThemeToggle';
 import { useToneAudio } from './hooks/useToneAudio';
 import './App.css';
 
@@ -97,7 +98,8 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1>Binary Music Player</h1>
+      <ThemeToggle />
+      <h1>Binary Beats</h1>
       <p className="description">
         A musical interpretation of binary counting. Each position plays a note when it changes to a 1.
       </p>
