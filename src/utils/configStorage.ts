@@ -1,10 +1,12 @@
 import { InstrumentType } from "../components/InstrumentSelector";
+import { AudioEffectsConfig } from "../components/AudioEffectsPanel";
 
 export interface BinaryBeatsConfig {
   name: string;
   notes: string[];
   instrumentType: InstrumentType;
   tempo: number;
+  effects?: AudioEffectsConfig;
   createdAt: number; // timestamp
 }
 

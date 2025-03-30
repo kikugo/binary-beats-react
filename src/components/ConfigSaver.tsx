@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { InstrumentType } from './InstrumentSelector';
+import { AudioEffectsConfig } from './AudioEffectsPanel';
 import { BinaryBeatsConfig, getSavedConfigs, saveConfig, deleteConfig } from '../utils/configStorage';
 import './ConfigSaver.css';
 
@@ -7,6 +8,7 @@ interface ConfigSaverProps {
   notes: string[];
   instrumentType: InstrumentType;
   tempo: number;
+  effects: AudioEffectsConfig;
   onLoadConfig: (config: BinaryBeatsConfig) => void;
 }
 
@@ -14,6 +16,7 @@ const ConfigSaver: React.FC<ConfigSaverProps> = ({
   notes, 
   instrumentType, 
   tempo, 
+  effects,
   onLoadConfig 
 }) => {
   const [configName, setConfigName] = useState('');
@@ -37,7 +40,8 @@ const ConfigSaver: React.FC<ConfigSaverProps> = ({
         name: configName,
         notes,
         instrumentType,
-        tempo
+        tempo,
+        effects
       });
 
       setSavedConfigs(getSavedConfigs());
