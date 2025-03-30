@@ -115,12 +115,15 @@ const Visualizer: React.FC<VisualizerProps> = ({ isPlaying, binary }) => {
       // Update and draw particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const particle = particles[i];
-        // Calculate direction based on index (for distributed pattern)
-        const angle = (particle.index / 10) * Math.PI * 2;
+        // Calculate direction based on index with some variation
+        const baseAngle = (particle.index / 10) * Math.PI * 2;
+        const timeVariation = Date.now() * 0.0001; // Subtle time-based variation
+        const angle = baseAngle + Math.sin(timeVariation) * 0.2;
         
-        // Move particle
-        particle.x += Math.cos(angle) * particle.speed;
-        particle.y += Math.sin(angle) * particle.speed;
+        // Move particle with some oscillation
+        const speedVariation = Math.sin(timeVariation * 2 + particle.index) * 0.3 + 1;
+        particle.x += Math.cos(angle) * particle.speed * speedVariation;
+        particle.y += Math.sin(angle) * particle.speed * speedVariation;
         
         // Reduce size and opacity over time
         particle.size *= 0.995;
