@@ -308,7 +308,7 @@ export const useToneAudio = ({
   return {
     playNote,
     startAudio,
-    stopAudio,
-    isInitialized
+    stopAudio
+    // Removed isInitialized from return value since it's not used by consumers
   };
 };
