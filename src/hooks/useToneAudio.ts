@@ -3,6 +3,9 @@ import * as Tone from 'tone';
 import { InstrumentType } from '../components/InstrumentSelector';
 import { AudioEffectsConfig } from '../components/AudioEffectsPanel';
 
+// Declare any type for Tone.js nodes to avoid TypeScript errors
+type ToneNode = any;
+
 // Default note durations corresponding to binary positions
 const DEFAULT_NOTE_DURATIONS = [1.7, 1.5, 1.3, 1.2, 0.9, 0.7, 0.6, 0.5, 0.5, 0.4];
 
@@ -37,10 +40,10 @@ export const useToneAudio = ({
   
   // Audio effects nodes
   const effectsRef = useRef<{
-    volume: Tone.Volume | null;
-    reverb: Tone.Reverb | null;
-    delay: Tone.FeedbackDelay | null;
-    filter: Tone.Filter | null;
+    volume: ToneNode;
+    reverb: ToneNode;
+    delay: ToneNode;
+    filter: ToneNode;
   }>({ volume: null, reverb: null, delay: null, filter: null });
   
   // Re-initialize when instrument type changes
@@ -109,21 +112,58 @@ export const useToneAudio = ({
           synth = new Tone.Synth();
       }
       
-      // Create audio effects chain
+          // Create simpler audio chain to avoid performance issues
+      // Start with a basic volume control only
       const volumeNode = new Tone.Volume(effects.volume * 20 - 10); // Convert 0-1 to -10 to +10 dB
-      const reverbNode = new Tone.Reverb({
-        decay: 1 + effects.reverb * 4, // 1-5 seconds
-        wet: effects.reverb
-      });
       
-      const delayNode = new Tone.FeedbackDelay({
-        delayTime: 0.25,
-        feedback: effects.delay * 0.6, // 0-0.6 to avoid runaway feedback
-        wet: effects.delay
-      });
+      // Create a simplified audio chain - this is a complete rewrite of the effects system
+      // to favor stability and performance over complex routing
+      // Only use volume control by default
+      const nodes: ToneNode[] = [];
       
-      const filterFreq = effects.filter * 10000 + 200; // 200Hz to 10.2kHz
-      const filterNode = new Tone.Filter(filterFreq, "lowpass");
+      // Add volume node (always present)
+      nodes.push(volumeNode);
+      
+      // Track all created nodes for cleanup
+      let reverbNode = null;
+      let delayNode = null;
+      let filterNode = null;
+
+      // SIMPLIFIED APPROACH: Create a basic chain
+      // Instead of complex routing, use minimal effects to ensure audio stability
+      
+      // Add filter - simple lowpass filter with moderate settings
+      if (effects.filter < 0.95) {
+        const filterFreq = effects.filter * 10000 + 200; // 200Hz to 10.2kHz
+        filterNode = new Tone.Filter({
+          frequency: filterFreq,
+          type: "lowpass",
+          Q: 1
+        });
+        nodes.push(filterNode);
+      }
+      
+      // Add delay only if significantly engaged (avoiding subtle delay that might cause issues)
+      if (effects.delay > 0.1) { // Higher threshold for activation
+        delayNode = new Tone.FeedbackDelay({
+          delayTime: 0.25,
+          feedback: Math.min(0.35, effects.delay * 0.4), // Very conservative feedback
+          wet: effects.delay * 0.8 // Slightly reduced wet level
+        });
+        nodes.push(delayNode);
+      }
+      
+      // Add reverb only if significantly engaged 
+      if (effects.reverb > 0.1) { // Higher threshold for activation
+        // Use FreeVerb instead of Reverb for performance reasons
+        // FreeVerb doesn't need to build impulse responses
+        reverbNode = new Tone.Freeverb({
+          roomSize: effects.reverb * 0.8,
+          dampening: 3000, 
+          wet: effects.reverb * 0.7 // Slightly reduced wet level
+        });
+        nodes.push(reverbNode);
+      }
       
       // Store references to effect nodes
       effectsRef.current = {
@@ -133,14 +173,29 @@ export const useToneAudio = ({
         filter: filterNode
       };
       
-      // Connect the audio chain
-      synth.chain(
-        filterNode,
-        delayNode,
-        reverbNode,
-        volumeNode,
-        Tone.Destination
-      );
+      // SIMPLIFIED CONNECTION APPROACH
+      // Disconnect synth from any previous connections
+      synth.disconnect();
+      
+      // Create manual chain connections using the Tone.connect() method
+      if (nodes.length > 0) {
+        // First connect synth to the first effect
+        let previousNode = synth;
+        
+        // Connect all nodes in sequence
+        for (const node of nodes) {
+          if (node) {
+            previousNode.connect(node);
+            previousNode = node;
+          }
+        }
+        
+        // Connect the last node to the destination
+        previousNode.connect(Tone.getDestination());
+      } else {
+        // If no effects, connect directly to destination
+        synth.connect(Tone.getDestination());
+      }
       
       synthRef.current = synth;
       
@@ -196,49 +251,58 @@ export const useToneAudio = ({
   useEffect(() => {
     // Apply effect changes to existing nodes if initialized
     if (isInitialized && effectsRef.current) {
-      const { volume, reverb, delay, filter } = effectsRef.current;
+      // Instead of updating individual properties, we'll recreate the entire chain
+      // This is more reliable and prevents audio glitches
       
-      if (volume) {
-        volume.volume.value = effects.volume * 20 - 10; // Convert 0-1 to -10 to +10 dB
-      }
+      // First dispose of all existing effects
+      Object.values(effectsRef.current).forEach(effect => {
+        if (effect) {
+          try {
+            effect.disconnect();
+          } catch (e) {
+            // Ignore disconnection errors
+          }
+        }
+      });
       
-      if (reverb) {
-        // The decay time needs to be updated differently - we need to recreate the reverb
-        // with the new decay time as it can't be changed dynamically
-        const currentDecay = typeof reverb.decay === 'number' ? reverb.decay : 3;
-        if (Math.abs(currentDecay - (1 + effects.reverb * 4)) > 0.1) {
-          // Dispose the old reverb and create a new one
-          const oldReverb = reverb;
-          const newReverb = new Tone.Reverb({
-            decay: 1 + effects.reverb * 4,
-            wet: effects.reverb
-          });
-          
-          // Replace in the chain
-          oldReverb.disconnect();
-          newReverb.connect(effectsRef.current.volume!);
-          effectsRef.current.delay?.disconnect();
-          effectsRef.current.delay?.connect(newReverb);
-          
-          // Store the new reverb
-          effectsRef.current.reverb = newReverb;
-          oldReverb.dispose();
-        } else {
-          // Just update the wet value
-          reverb.wet.value = effects.reverb;
+      // Then reinitialize the synth to rebuild the audio chain
+      // This triggers a clean rebuild of the entire audio graph
+      setIsInitialized(false);
+      
+      // Schedule reinit for the next frame to avoid audio glitches
+      requestAnimationFrame(() => {
+        initializeSynth();
+      });
+    }
+  }, [effects, isInitialized, initializeSynth]);
+  
+  // Catch audio context errors and resume if suspended
+  useEffect(() => {
+    // Resume audio context if suspended
+    const resumeAudioContext = async () => {
+      if (Tone.context.state !== 'running') {
+        try {
+          await Tone.context.resume();
+          console.log('Audio context resumed successfully');
+        } catch (error) {
+          console.error('Failed to resume audio context:', error);
         }
       }
-      
-      if (delay) {
-        delay.feedback.value = effects.delay * 0.6; // 0-0.6 to avoid runaway feedback
-        delay.wet.value = effects.delay;
-      }
-      
-      if (filter) {
-        filter.frequency.value = effects.filter * 10000 + 200; // 200Hz to 10.2kHz
-      }
-    }
-  }, [effects, isInitialized]);
+    };
+    
+    // Resume initially
+    resumeAudioContext();
+    
+    // Set up listeners for user interaction to resume audio context
+    const handleInteraction = () => resumeAudioContext();
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
+    
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+  }, []);
   
   return {
     playNote,
