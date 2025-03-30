@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import './Visualizer.css';
 
 interface VisualizerProps {
@@ -6,21 +6,37 @@ interface VisualizerProps {
   binary: string;
 }
 
-// Color schemes - vibrant gradient based on position
-const colorSchemes = [
-  (index: number) => `hsla(${index * (360 / 10)}, 100%, 70%, 1)`, // Rainbow
-  (index: number) => `hsla(${200 + index * 10}, 100%, 65%, 1)`,    // Blues
-  (index: number) => `hsla(${320 + index * 5}, 90%, 65%, 1)`,      // Purples
-  (index: number) => `hsla(${25 + index * 5}, 100%, 60%, 1)`,      // Oranges
-  (index: number) => `hsla(${120 + index * 5}, 90%, 60%, 1)`,      // Greens
-];
+// Visual modes
+enum VisualMode {
+  BARS = 'bars',
+  WAVE = 'wave',
+}
+
+// Color schemes
+const colorSchemes = {
+  red: ['#FF3333', '#FF6666', '#FF9999', '#FFCCCC'],
+  blue: ['#3333FF', '#6666FF', '#9999FF', '#CCCCFF'],
+  green: ['#33FF33', '#66FF66', '#99FF99', '#CCFFCC'],
+  purple: ['#9933FF', '#BB66FF', '#CC99FF', '#DDCCFF'],
+  orange: ['#FF9933', '#FFBB66', '#FFCC99', '#FFEECC'],
+};
 
 const Visualizer: React.FC<VisualizerProps> = ({ isPlaying, binary }) => {
-  // Store previous binary value to detect changes
-  const prevBinaryRef = useRef<string>(binary);
+  // State for visualization mode
+  const [visualMode, setVisualMode] = useState<VisualMode>(VisualMode.BARS);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   
+  // Store the previous binary for animation transitions
+  const prevBinaryRef = useRef<string>(binary);
+  
+  // Toggle visualization mode
+  const toggleVisualMode = () => {
+    setVisualMode(prevMode => 
+      prevMode === VisualMode.BARS ? VisualMode.WAVE : VisualMode.BARS
+    );
+  };
+
   // Initialize and manage the canvas-based visualization
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -41,163 +57,139 @@ const Visualizer: React.FC<VisualizerProps> = ({ isPlaying, binary }) => {
     
     window.addEventListener('resize', handleResize);
     
-    // Animation variables
-    const particles: Array<{
-      x: number;
-      y: number;
-      size: number;
-      color: string;
-      speed: number;
-      opacity: number;
-      index: number;
-    }> = [];
+    // Performance optimization: pre-calculate bar positioning
+    const barCount = 10; // For 10-bit binary number
+    const barWidth = canvas.width / (barCount * 1.5);
+    const barSpacing = canvas.width / barCount - barWidth;
+    const barMaxHeight = canvas.height * 0.8;
     
-    // Create initial particles based on binary state
-    const createParticles = () => {
-      particles.length = 0;
-      
-      // Select color scheme based on binary value
-      const binaryValue = parseInt(binary, 2);
-      const colorSchemeIndex = binaryValue % colorSchemes.length;
-      const getColor = colorSchemes[colorSchemeIndex];
-      
+    // Get color scheme based on binary value
+    const getColorScheme = () => {
+      const binaryValue = parseInt(binary, 2) || 0;
+      const schemes = Object.values(colorSchemes);
+      return schemes[binaryValue % schemes.length];
+    };
+    
+    // Animation helpers
+    const barHeights = new Array(barCount).fill(0);
+    const targetHeights = new Array(barCount).fill(0);
+    const wavePoints: Array<{x: number, y: number}> = [];
+    
+    // Update target heights based on binary
+    const updateTargetHeights = () => {
       binary.split('').forEach((bit, index) => {
-        if (bit === '1') {          
-          particles.push({
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            size: Math.random() * 4 + 3,
-            color: getColor(index),
-            speed: Math.random() * 2 + 0.5,
-            opacity: 1,
-            index
-          });
-        }
+        // Set target height based on bit value (0 or 1)
+        targetHeights[index] = bit === '1' ? Math.random() * 0.4 + 0.6 : Math.random() * 0.2; // Normalized height
       });
     };
     
     // Animation loop
     const animate = () => {
-      if (!isPlaying) {
-        // Fade out particles when not playing
-        ctx.fillStyle = 'rgba(20, 20, 35, 0.2)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw existing particles with fade out
-        particles.forEach((particle) => {
-          particle.opacity -= 0.01;
-          if (particle.opacity > 0) {
-            ctx.beginPath();
-            ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-            ctx.fillStyle = particle.color.replace('1)', `${particle.opacity})`);
-            ctx.fill();
-          }
-        });
-        
-        // Remove faded particles
-        for (let i = particles.length - 1; i >= 0; i--) {
-          if (particles[i].opacity <= 0) {
-            particles.splice(i, 1);
-          }
-        }
-        
-        if (particles.length > 0) {
-          animationRef.current = requestAnimationFrame(animate);
-        }
-        return;
-      }
-      
-      // Check if binary changed and create particles accordingly
-      const prevBinary = prevBinaryRef.current;
-      if (binary !== prevBinary) {
-        // Create explosion effect on binary change
-        const binaryInt = parseInt(binary, 2);
-        
-        // For each changed bit, create an explosion
-        binary.split('').forEach((bit, index) => {
-          const prevBit = prevBinary[index] || '0';
-          if (bit !== prevBit) {
-            // Create explosion at this position
-            const explosionCount = 20; // Number of particles in explosion
-            const colorSchemeIndex = binaryInt % colorSchemes.length;
-            const getColor = colorSchemes[colorSchemeIndex];
-            
-            for (let i = 0; i < explosionCount; i++) {
-              const angle = (i / explosionCount) * Math.PI * 2;
-              
-              // Calculate initial position with slight offset from center
-              // This creates an immediate small explosion effect
-              const startDistance = 10; // Small initial distance from center
-              const x = canvas.width / 2 + Math.cos(angle) * startDistance;
-              const y = canvas.height / 2 + Math.sin(angle) * startDistance;
-              
-              // Initial velocity in all directions
-              const speed = Math.random() * 3 + 1.5; // Faster than regular particles
-              
-              particles.push({
-                x: x,
-                y: y,
-                size: Math.random() * 5 + 2,
-                color: getColor(index),
-                speed: speed,
-                opacity: 1,
-                index: index * 100 + i // Store both bit index and position in circle
-              });
-            }
-          }
-        });
-        
-        // Update reference
-        prevBinaryRef.current = binary;
-      }
-      
-      // Always create some background particles when playing
-      createParticles();
-      
-      // Clear canvas with fade effect
-      ctx.fillStyle = 'rgba(20, 20, 35, 0.2)';
+      // Clear canvas
+      ctx.fillStyle = 'rgba(10, 10, 20, 0.3)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Update and draw particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const particle = particles[i];
-        // Calculate direction based on index with some variation
-        const particleAngleIndex = particle.index % 100; // Get original position in circle
-        const baseIndex = Math.floor(particle.index / 100); // Get original bit index
+
+      // If not playing, gradually reduce heights
+      if (!isPlaying) {
+        barHeights.forEach((height, i) => {
+          if (height > 0) {
+            barHeights[i] *= 0.95; // Gradually reduce height
+          }
+        });
+      } else {
+        // Update target heights if playing
+        updateTargetHeights();
+
+        // Check for binary value change
+        if (binary !== prevBinaryRef.current) {
+          // Flash effect when binary changes
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          prevBinaryRef.current = binary;
+        }
+      }
+
+      // Animate bar heights towards target values
+      for (let i = 0; i < barCount; i++) {
+        barHeights[i] += (targetHeights[i] * barMaxHeight - barHeights[i]) * 0.1;
+      }
+
+      // Get colors based on current binary value
+      const colors = getColorScheme();
+
+      // Render based on visualization mode
+      if (visualMode === VisualMode.BARS) {
+        // Frequency Bar Visualization
+        binary.split('').forEach((bit, i) => {
+          const height = barHeights[i];
+          const x = i * (barWidth + barSpacing) + barSpacing;
+          const y = canvas.height - height;
+
+          // Color based on bit value
+          const colorIndex = bit === '1' ? 0 : 3; // Brighter color for 1s
+          
+          // Draw bar with gradient
+          const gradient = ctx.createLinearGradient(x, y, x, canvas.height);
+          gradient.addColorStop(0, colors[colorIndex]);
+          gradient.addColorStop(1, colors[colorIndex + 1 > 3 ? 3 : colorIndex + 1]);
+          
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, y, barWidth, height);
+
+          // Add shine effect
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.fillRect(x, y, barWidth * 0.5, height);
+          
+          // Add value indicator
+          const circleRadius = barWidth * 0.3;
+          ctx.beginPath();
+          ctx.arc(x + barWidth / 2, y, circleRadius, 0, Math.PI * 2);
+          ctx.fillStyle = bit === '1' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)';
+          ctx.fill();
+        });
+      } else {
+        // Wave Visualization
+        const centerY = canvas.height / 2;
+        const amplitude = canvas.height * 0.3;
         
-        // Different movement patterns based on particle type
-        let moveAngle;
+        // Clear previous points
+        wavePoints.length = 0;
         
-        // Get time variation for animation effects
-        const timeVariation = Date.now() * 0.0001; // Subtle time-based variation
-        
-        if (particleAngleIndex < 20) { 
-          // Explosion particles - maintain outward direction with slight wobble
-          moveAngle = (particleAngleIndex / 20) * Math.PI * 2 + Math.sin(timeVariation) * 0.1;
-        } else {
-          // Regular particles - use original behavior
-          const baseAngle = (baseIndex / 10) * Math.PI * 2;
-          moveAngle = baseAngle + Math.sin(timeVariation) * 0.2;
+        // Generate wave points
+        for (let x = 0; x < canvas.width; x++) {
+          const t = Date.now() * 0.001;
+          const binaryValue = parseInt(binary, 2) || 1;
+          const waveFreq = binaryValue / 100 + 0.05;
+          
+          // Composite wave from binary bits
+          let y = centerY;
+          binary.split('').forEach((bit, i) => {
+            if (bit === '1') {
+              const bitFreq = (i + 1) * waveFreq;
+              y += Math.sin((x * bitFreq / 100) + t * (i + 1)) * amplitude * (barHeights[i] / barMaxHeight);
+            }
+          });
+          
+          wavePoints.push({x, y});
         }
         
-        // Move particle with some oscillation
-        const speedVariation = Math.sin(timeVariation * 2 + particle.index) * 0.3 + 1;
-        particle.x += Math.cos(moveAngle) * particle.speed * speedVariation;
-        particle.y += Math.sin(moveAngle) * particle.speed * speedVariation;
-        
-        // Reduce size and opacity over time
-        particle.size *= 0.995;
-        particle.opacity -= 0.005;
-        
-        // Draw particle
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        ctx.fillStyle = particle.color.replace('1)', `${particle.opacity})`);
-        ctx.fill();
-        
-        // Remove small or transparent particles
-        if (particle.size < 0.5 || particle.opacity <= 0) {
-          particles.splice(i, 1);
+        // Draw the wave
+        if (wavePoints.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(wavePoints[0].x, wavePoints[0].y);
+          
+          for (let i = 1; i < wavePoints.length; i++) {
+            ctx.lineTo(wavePoints[i].x, wavePoints[i].y);
+          }
+          
+          ctx.strokeStyle = colors[0];
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          
+          // Draw glow effect
+          ctx.strokeStyle = colors[1];
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
       }
       
@@ -212,11 +204,19 @@ const Visualizer: React.FC<VisualizerProps> = ({ isPlaying, binary }) => {
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationRef.current);
     };
-  }, [isPlaying, binary]);
+  }, [isPlaying, binary, visualMode]);
   
   return (
     <div className="visualizer-container">
-      <canvas ref={canvasRef} className="visualizer-canvas" />
+      <canvas 
+        ref={canvasRef} 
+        className="visualizer-canvas" 
+        onClick={toggleVisualMode}
+        title="Click to change visualization mode"
+      />
+      <div className="visualizer-mode-indicator">
+        {visualMode === VisualMode.BARS ? 'BAR MODE' : 'WAVE MODE'}
+      </div>
     </div>
   );
 };
