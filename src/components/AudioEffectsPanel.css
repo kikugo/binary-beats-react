@@ -1,0 +1,77 @@
+.audio-effects-panel {
+  background-color: var(--panel-bg);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.audio-effects-panel h3 {
+  color: var(--primary-text);
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.effect-control {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.effect-control label {
+  width: 80px;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+.effect-control input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 5px;
+  background: var(--slider-bg);
+  border-radius: 5px;
+  outline: none;
+  margin: 0 12px;
+}
+
+.effect-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.effect-control input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--hover-color);
+  transform: scale(1.1);
+}
+
+.effect-control input[type="range"]::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.effect-control input[type="range"]::-moz-range-thumb:hover {
+  background: var(--hover-color);
+  transform: scale(1.1);
+}
+
+.effect-value {
+  width: 50px;
+  text-align: right;
+  color: var(--primary-text);
+  font-size: 0.85rem;
+  font-family: 'Courier New', monospace;
+}
