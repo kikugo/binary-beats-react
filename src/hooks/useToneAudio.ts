@@ -48,6 +48,26 @@ export const useToneAudio = ({
   
   // Re-initialize when instrument type changes
   useEffect(() => {
+    // Resume audio context if suspended before initializing
+    const resumeAudioContext = async () => {
+      if (Tone.context.state !== 'running') {
+        try {
+          await Tone.context.resume();
+          console.log('Audio context resumed successfully');
+        } catch (error) {
+          console.error('Failed to resume audio context:', error);
+        }
+      }
+    };
+    
+    // Ensure audio context is running
+    resumeAudioContext();
+    
+    // Set up listeners for user interaction to resume audio context
+    const handleInteraction = () => resumeAudioContext();
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
+    
     if (isInitialized) {
       // Dispose of previous synth to free memory
       if (synthRef.current) {
@@ -63,6 +83,12 @@ export const useToneAudio = ({
       
       setIsInitialized(false);
     }
+    
+    return () => {
+      // Remove event listeners
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
   }, [instrumentType, isInitialized]);
   
   // Initialize the synthesizer 
@@ -276,33 +302,8 @@ export const useToneAudio = ({
     }
   }, [effects, isInitialized, initializeSynth]);
   
-  // Catch audio context errors and resume if suspended
-  useEffect(() => {
-    // Resume audio context if suspended
-    const resumeAudioContext = async () => {
-      if (Tone.context.state !== 'running') {
-        try {
-          await Tone.context.resume();
-          console.log('Audio context resumed successfully');
-        } catch (error) {
-          console.error('Failed to resume audio context:', error);
-        }
-      }
-    };
-    
-    // Resume initially
-    resumeAudioContext();
-    
-    // Set up listeners for user interaction to resume audio context
-    const handleInteraction = () => resumeAudioContext();
-    document.addEventListener('click', handleInteraction);
-    document.addEventListener('keydown', handleInteraction);
-    
-    return () => {
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('keydown', handleInteraction);
-    };
-  }, []);
+  // Instead of a separate hook for audio context, we merged it with the initialization hook above
+  // to avoid React hook order errors
   
   return {
     playNote,
