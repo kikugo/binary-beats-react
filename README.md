@@ -2,8 +2,6 @@
 
 A modern React and TypeScript implementation of the binary music concept, where binary counting creates musical patterns, featuring a dynamic audio visualizer.
 
-![Binary Beats React](https://github.com/kikugo/binary-beats-react/raw/main/public/preview.png)  <!-- TODO: Update with a current screenshot -->
-
 ## About
 
 Binary Beats React transforms binary counting into music and visuals. As a counter increments in binary (0-1023), each column plays a musical note when it changes to a "1". This creates interesting musical patterns based purely on the mathematics of binary counting. The application also features a dynamic visualizer that reacts to the binary state.
